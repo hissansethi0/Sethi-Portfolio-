@@ -99,7 +99,8 @@ export const About: React.FC = () => {
                   <img
                     src="/assets/hissan-portrait.jpg"
                     alt={profile.name}
-                    className="w-16 h-16 rounded-2xl object-cover border border-[#2D8CFF]/40 shadow-md"
+                    referrerPolicy="no-referrer"
+                    className="w-16 h-16 rounded-2xl object-cover object-top border border-[#2D8CFF]/40 shadow-md"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = profile.avatarUrl;
                     }}

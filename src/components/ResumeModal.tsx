@@ -693,6 +693,7 @@ LANGUAGES
                 <img 
                   src="/assets/hissan-cv-avatar.jpg" 
                   alt="Hissan Sethi" 
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover object-top"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';

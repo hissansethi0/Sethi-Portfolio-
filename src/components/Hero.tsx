@@ -181,19 +181,17 @@ export const Hero: React.FC = () => {
               {/* Soft Electric Blue Rim Glow behind Hissan */}
               <div className="absolute inset-0 bg-gradient-to-tr from-[#1683FF]/30 via-[#2D8CFF]/15 to-transparent rounded-full blur-3xl opacity-80 pointer-events-none scale-110" />
 
-              {/* Seamless Portrait Container blending into #05070A */}
-              <div className="relative w-full aspect-[3/4] max-w-[340px] sm:max-w-[380px] overflow-hidden rounded-2xl">
+              {/* 100% Original Portrait Presentation - No filters, no masking */}
+              <div className="relative w-full aspect-[3/4] max-w-[340px] sm:max-w-[380px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-[#0d141e]">
                 <img
                   src="/assets/hissan-portrait.jpg"
                   alt="Hissan Sethi - Full Stack Web Developer"
-                  className="w-full h-full object-cover object-top filter brightness-105 contrast-105"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover object-top"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/src/assets/images/hissan_sunglasses_portrait_1789814046078.jpg';
                   }}
                 />
-                
-                {/* Smooth bottom gradient fade to seamlessly merge with background */}
-                <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#05070A] via-[#05070A]/70 to-transparent pointer-events-none" />
               </div>
 
               {/* Typography Banner beside/below portrait matching mockup */}
