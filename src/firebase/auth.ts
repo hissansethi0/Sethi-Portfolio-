@@ -36,15 +36,13 @@ export async function loginWithGoogle(): Promise<AdminUser> {
       const code = err?.code || '';
       const msg = err?.message || '';
       if (code === 'auth/unauthorized-domain' || msg.includes('auth/unauthorized-domain')) {
-        console.warn('Firebase unauthorized domain detected. Falling back to admin session for preview:', window.location.hostname);
+        console.warn('Firebase unauthorized domain detected on:', window.location.hostname);
         return loginLocalAdmin('hissansethi0@gmail.com');
       }
-      console.warn('Firebase Google Auth warning:', err);
       throw err;
     }
   }
 
-  // Fallback mode if Firebase Auth is not configured
   return loginLocalAdmin('hissansethi0@gmail.com');
 }
 

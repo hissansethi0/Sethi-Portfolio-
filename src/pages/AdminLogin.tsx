@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { 
   Shield, Lock, Mail, ArrowRight, AlertCircle, ArrowLeft, 
-  KeyRound, Sparkles, UserPlus, CheckCircle2, RefreshCw, Chrome,
-  Copy, Check, ExternalLink
+  KeyRound, Sparkles, UserPlus, CheckCircle2, RefreshCw, Copy, Check, Globe
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { isFirebaseConfigured } from '../firebase/config';
 
 export const AdminLogin: React.FC = () => {
-  const { user, login, loginGoogle, register, resetPassword, loginLocal } = useAuth();
+  const { user, login, register, loginGoogle, resetPassword, loginLocal } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'register' | 'forgot'>('signin');
   const [email, setEmail] = useState('hissansethi0@gmail.com');
@@ -17,20 +16,16 @@ export const AdminLogin: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [showRegisterSuggestion, setShowRegisterSuggestion] = useState(false);
   const [copiedDomain, setCopiedDomain] = useState(false);
+
+  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isNetlifyLive = currentHostname.includes('hissansethi.netlify.app');
 
   // If already logged in, redirect directly to dashboard
   if (user) {
     return <Navigate to="/admin/dashboard" replace />;
   }
-
-  const handleCopyDomain = () => {
-    navigator.clipboard.writeText(window.location.hostname);
-    setCopiedDomain(true);
-    setTimeout(() => setCopiedDomain(false), 2000);
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +99,35 @@ export const AdminLogin: React.FC = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setSuccessNotice(null);
+    setShowRegisterSuggestion(false);
+    setLoading(true);
+
+    try {
+      await loginGoogle();
+    } catch (err: any) {
+      console.warn('Google sign-in issue:', err);
+      const rawMsg = err?.message || '';
+      if (rawMsg.includes('auth/popup-closed-by-user')) {
+        setError('Google sign-in popup was closed before finishing.');
+      } else {
+        setError(rawMsg || 'Failed to authenticate with Google.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyHostname = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.hostname);
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2000);
+    }
+  };
+
   const handleLocalBypass = async () => {
     setLoading(true);
     try {
@@ -112,40 +136,6 @@ export const AdminLogin: React.FC = () => {
       setError(err?.message || 'Failed to enter sandbox mode.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    setSuccessNotice(null);
-    setShowRegisterSuggestion(false);
-    setGoogleLoading(true);
-
-    try {
-      await loginGoogle();
-    } catch (err: any) {
-      console.warn('Google Sign-In caught:', err);
-      const rawMsg = err?.message || '';
-      if (rawMsg.includes('auth/unauthorized-domain')) {
-        // Automatically grant session for admin owner in preview
-        try {
-          await loginLocal('hissansethi0@gmail.com');
-          return;
-        } catch {
-          // ignore
-        }
-      }
-      if (rawMsg.includes('auth/popup-closed-by-user')) {
-        setError('Google sign-in popup was closed before completing authentication.');
-      } else if (rawMsg.includes('auth/popup-blocked')) {
-        setError('Google sign-in popup was blocked by your browser. Please allow popups for this domain and try again.');
-      } else if (rawMsg.includes('auth/configuration-not-found') || rawMsg.includes('auth/operation-not-allowed')) {
-        setError('Google sign-in provider is being enabled in Firebase Auth. Please verify that Google is enabled under Sign-in providers.');
-      } else {
-        setError(rawMsg || 'Failed to authenticate with Google. You can also sign in with email or use Local Sandbox mode.');
-      }
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -188,11 +178,45 @@ export const AdminLogin: React.FC = () => {
         <div className="mt-8 p-7 sm:p-8 rounded-2xl bg-[#0e1626]/95 border border-slate-800/90 shadow-2xl backdrop-blur-xl space-y-6">
           
           {/* Status info */}
-          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-xs font-mono flex items-center justify-between text-slate-400">
-            <span>Auth Engine:</span>
-            <span className={isFirebaseConfigured() ? 'text-emerald-400 font-semibold' : 'text-amber-400'}>
-              {isFirebaseConfigured() ? '● Live Firebase Auth' : '● Local Sandbox Mode'}
-            </span>
+          <div className="space-y-2">
+            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-xs font-mono flex items-center justify-between text-slate-400">
+              <span>Auth Engine:</span>
+              <span className={isFirebaseConfigured() ? 'text-emerald-400 font-semibold' : 'text-amber-400'}>
+                {isFirebaseConfigured() ? '● Live Firebase Auth' : '● Local Sandbox Mode'}
+              </span>
+            </div>
+
+            {/* Authorized Domain Status Card */}
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs font-mono text-emerald-300 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-[11px]">
+                  Authorized Domain: <strong className="text-white">hissansethi.netlify.app</strong>
+                </span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold">
+                Active
+              </span>
+            </div>
+
+            {/* Note if viewing from dev preview URL */}
+            {currentHostname && !currentHostname.includes('hissansethi.netlify.app') && currentHostname !== 'localhost' && (
+              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] font-mono text-slate-400 flex items-center justify-between gap-2">
+                <div className="truncate">
+                  <span className="text-slate-500">Preview Host: </span>
+                  <span className="text-slate-300">{currentHostname}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyHostname}
+                  className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                  title="Copy preview domain to add to Firebase Authorized domains if desired"
+                >
+                  {copiedDomain ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedDomain ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Mode Switcher Tabs */}
@@ -262,42 +286,47 @@ export const AdminLogin: React.FC = () => {
             </div>
           )}
 
-          {/* Quick Google Sign In */}
-          {(mode === 'signin' || mode === 'register') && (
+          {/* SIGN IN FORM */}
+          {mode === 'signin' && (
             <div className="space-y-4">
+              {/* Google Sign In Button */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                disabled={loading || googleLoading}
-                className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs tracking-wide transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2.5 disabled:opacity-50 active:scale-98 cursor-pointer"
+                disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-98 cursor-pointer disabled:opacity-50"
               >
-                {googleLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                    <span className="font-mono text-xs">Signing in with Google...</span>
-                  </>
-                ) : (
-                  <>
-                    <Chrome className="w-4 h-4 text-[#4285F4]" />
-                    <span>Sign in with Google</span>
-                  </>
-                )}
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.1C3.27 21.44 7.35 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.1z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.56 1.25 6.58l4.03 3.1c.95-2.83 3.6-4.93 6.72-4.93z"
+                  />
+                </svg>
+                <span>Continue with Google</span>
               </button>
 
-              <div className="relative flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800" />
-                </div>
-                <span className="relative px-3 bg-[#0e1626] text-[11px] font-mono uppercase text-slate-500 tracking-wider">
-                  Or continue with email
+              {/* Divider */}
+              <div className="relative flex items-center justify-center my-3">
+                <div className="border-t border-slate-800 w-full" />
+                <span className="bg-[#0e1626] px-3 text-[10px] font-mono uppercase tracking-wider text-slate-500 shrink-0">
+                  Or with email
                 </span>
+                <div className="border-t border-slate-800 w-full" />
               </div>
-            </div>
-          )}
 
-          {/* SIGN IN FORM */}
-          {mode === 'signin' && (
-            <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="admin-email" className="block text-xs font-mono text-slate-300">
                   Admin Email Address
@@ -365,6 +394,7 @@ export const AdminLogin: React.FC = () => {
                 )}
               </button>
             </form>
+          </div>
           )}
 
           {/* REGISTER ADMIN USER FORM */}
@@ -505,30 +535,6 @@ export const AdminLogin: React.FC = () => {
             </p>
           </div>
 
-        </div>
-
-        {/* Firebase Authorized Domain Helper */}
-        <div className="mt-4 p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 text-[11px] font-mono text-slate-400 flex flex-col gap-2">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="flex items-center gap-1.5 text-xs text-slate-200">
-              <Shield className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Current Host Domain:</span>
-            </span>
-            <button
-              type="button"
-              onClick={handleCopyDomain}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 text-[11px] transition-colors cursor-pointer"
-            >
-              {copiedDomain ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-              <span>{copiedDomain ? 'Copied!' : 'Copy Domain'}</span>
-            </button>
-          </div>
-          <div className="text-[11px] font-mono break-all bg-slate-950/90 p-2 rounded-lg border border-slate-800/80 text-emerald-400/90 select-all">
-            {typeof window !== 'undefined' ? window.location.hostname : ''}
-          </div>
-          <p className="text-[10px] text-slate-500 leading-relaxed">
-            Google Sign-in seamlessly grants preview access. To also allow live Firebase OAuth popups, paste this domain in <span className="text-slate-300 font-semibold">Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</span>.
-          </p>
         </div>
 
       </div>

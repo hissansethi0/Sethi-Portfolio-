@@ -2,10 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   AdminUser, 
   loginAdmin, 
-  loginWithGoogle,
   registerAdmin, 
   resetAdminPassword, 
   loginLocalAdmin, 
+  loginWithGoogle,
   logoutAdmin, 
   subscribeToAuthChanges 
 } from '../firebase/auth';
@@ -14,8 +14,8 @@ interface AuthContextType {
   user: AdminUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  loginGoogle: () => Promise<void>;
   register: (email: string, pass: string) => Promise<void>;
+  loginGoogle: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   loginLocal: (email?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -45,21 +45,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginGoogle = async () => {
-    setLoading(true);
-    try {
-      const loggedUser = await loginWithGoogle();
-      setUser(loggedUser);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const register = async (email: string, pass: string) => {
     setLoading(true);
     try {
       const registeredUser = await registerAdmin(email, pass);
       setUser(registeredUser);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginGoogle = async () => {
+    setLoading(true);
+    try {
+      const googleUser = await loginWithGoogle();
+      setUser(googleUser);
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginGoogle, register, resetPassword, loginLocal, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginGoogle, resetPassword, loginLocal, logout }}>
       {children}
     </AuthContext.Provider>
   );

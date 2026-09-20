@@ -79,52 +79,10 @@ export const Hero: React.FC = () => {
     }
   };
 
-  // Direct download plus visual interactive modal
+  // Opens the 100% original CV modal with direct download and print options
   const handleDownloadCV = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Open resume modal immediately
     setResumeModalOpen(true);
-
-    // Also trigger instant download
-    try {
-      const cvContent = `HISSAN SETHI — FULL STACK WEB DEVELOPER
-Location: Peshawar, Pakistan
-WhatsApp: ${profile.whatsapp}
-LinkedIn: ${profile.linkedin}
-GitHub: ${profile.github}
-Email: hissansethi0@gmail.com
-
-PROFILE:
-I build modern, fast and scalable web applications with a focus on clean code, great user experience and real-world solutions.
-
-CORE TECHNOLOGIES:
-- Frontend: React, Next.js, JavaScript (ES6+), HTML5, CSS3, Tailwind CSS, Vite
-- Backend: Node.js, Express.js, RESTful APIs
-- Database: MongoDB, Firebase Realtime Database, Firebase Auth
-- Cloud & Tools: Git, GitHub, Cloudinary, Netlify
-
-FEATURED PROJECTS:
-1. HS Cloud (https://hs-cloud.netlify.app) - Cloud Storage & File Management
-2. HS Restaurant (https://hs-restaurant.netlify.app) - Restaurant Website
-3. HS Fragrances (https://hs-fragrances.netlify.app) - Perfume Store Website
-4. HS Weathering (https://hs-weathering.netlify.app) - Weather Forecast App
-5. Charsadda Chapal (https://charsadda-chapal.netlify.app) - Handmade Footwear Store
-6. FGPBS (https://fgpbs.netlify.app) - College Portal & System
-7. Sethi Tech Store (https://sethitechstore.netlify.app) - Electronics & Tech Showcase
-8. HS Calculation (https://hs-calculation.netlify.app) - Precision Calculator Engine
-`;
-      const blob = new Blob([cvContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'Hissan-Sethi-Resume.txt';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (err) {
-      console.warn('Silent download intercepted; modal active.', err);
-    }
   };
 
   return (
