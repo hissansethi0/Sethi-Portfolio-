@@ -87,3 +87,23 @@
 .portrait-glow {
   filter: drop-shadow(0 0 45px rgba(22, 131, 255, 0.18));
 }
+
+/* Netlify Badge & HUD overlay suppression */
+#nl-badge-frame,
+#nl-hud-frame,
+iframe[title*="Netlify"],
+iframe[title*="Powered by Netlify"],
+iframe[srcdoc*="Powered by Netlify"],
+iframe[src*="netlify"],
+iframe[id^="nl-"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  clip-path: path("M0 0Z") !important;
+}

@@ -21,6 +21,25 @@
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     </noscript>
+    <script>
+      /* Suppress Netlify "Powered by Netlify" edge HUD badge */
+      try {
+        localStorage.setItem('nl-hud:public:v1', 'hidden');
+        localStorage.setItem('nl-hud:owner-private:v1', 'hidden');
+      } catch (e) {}
+      (function() {
+        var purge = function() {
+          var els = document.querySelectorAll('#nl-badge-frame, #nl-hud-frame, iframe[title*="Netlify"], iframe[id^="nl-"]');
+          els.forEach(function(el) { el.remove(); });
+        };
+        if (typeof window !== 'undefined') {
+          window.addEventListener('DOMContentLoaded', purge);
+          if (window.MutationObserver) {
+            new MutationObserver(purge).observe(document.documentElement, { childList: true, subtree: true });
+          }
+        }
+      })();
+    </script>
   </head>
   <body class="bg-[#05070A] text-[#F5F7FA] antialiased selection:bg-[#1683FF]/30 selection:text-white">
     <div id="root"></div>
