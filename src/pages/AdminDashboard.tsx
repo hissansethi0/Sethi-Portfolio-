@@ -4,7 +4,8 @@ import {
   LayoutDashboard, FolderGit2, Code2, Briefcase, GraduationCap, 
   MessageSquare, User, Settings, LogOut, Plus, Trash2, Edit3, 
   ExternalLink, Upload, Star, CheckCircle, AlertCircle, Shield, 
-  Menu, X, Eye, EyeOff, RefreshCw, Copy, Check, Sparkles 
+  Menu, X, Eye, EyeOff, RefreshCw, Copy, Check, Sparkles,
+  Camera, RotateCcw, Image as ImageIcon 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -57,6 +58,81 @@ export const AdminDashboard: React.FC = () => {
   const handleLogout = async () => {
     await logout();
     navigate('/admin/login');
+  };
+
+  // Profile Photo Management State & Handlers
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [customPhotoUrl, setCustomPhotoUrl] = useState('');
+  const photoFileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showNotification('Please select an image file (JPEG, PNG, WEBP)', 'error');
+      return;
+    }
+
+    setPhotoUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new window.Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          const maxDim = 1200;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            const updated = { ...profile, avatarUrl: optimizedDataUrl };
+            await updateProfile(updated);
+            showNotification('Profile photo updated successfully across Hero, About & CV!');
+          }
+          setPhotoUploading(false);
+        };
+        img.onerror = () => {
+          showNotification('Could not decode the selected image', 'error');
+          setPhotoUploading(false);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to process image upload', 'error');
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleResetPhoto = async () => {
+    const updated = { ...profile, avatarUrl: '/assets/hissan-portrait.jpg' };
+    await updateProfile(updated);
+    showNotification('Reset photo to default portrait');
+  };
+
+  const handleApplyCustomPhotoUrl = async () => {
+    if (!customPhotoUrl.trim()) {
+      showNotification('Please enter a valid image URL', 'error');
+      return;
+    }
+    const updated = { ...profile, avatarUrl: customPhotoUrl.trim() };
+    await updateProfile(updated);
+    showNotification('Applied custom profile photo URL!');
+    setCustomPhotoUrl('');
   };
 
   // Cloudinary image upload handler for project modal
@@ -984,7 +1060,143 @@ export const AdminDashboard: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-bold text-white">Profile Information</h3>
-                <p className="text-xs text-slate-400">Update personal identity, contact handles, and developer biography.</p>
+                <p className="text-xs text-slate-400">Update personal identity, portrait photo, contact handles, and developer biography.</p>
+              </div>
+
+              {/* PROFILE PHOTO MANAGEMENT CARD */}
+              <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-emerald-400" />
+                      Profile Photograph & Portrait
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      This photo updates synchronously across your Hero Section, About Me card, and CV / Resume modal.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      ref={photoFileInputRef}
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handlePhotoFileChange} 
+                      className="hidden" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => photoFileInputRef.current?.click()}
+                      disabled={photoUploading}
+                      className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                    >
+                      {photoUploading ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          Processing Photo...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          Upload from Device
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetPhoto}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1.5 transition cursor-pointer"
+                      title="Reset to original default"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                      Reset
+                    </button>
+                  </div>
+                </div>
+
+                {/* ACTIVE PHOTO PREVIEWS (Hero, About, CV) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Hero Preview */}
+                  <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center gap-4">
+                    <div className="relative w-16 h-20 rounded-lg overflow-hidden border border-emerald-500/40 shrink-0 bg-slate-900 shadow-md">
+                      <img 
+                        src={profile.avatarUrl || '/assets/hissan-portrait.jpg'} 
+                        alt="Hero preview" 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover object-top"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider block font-semibold">Hero Section</span>
+                      <p className="text-xs text-slate-300 font-medium mt-0.5">3:4 Studio Portrait</p>
+                      <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+                    </div>
+                  </div>
+
+                  {/* About Card Preview */}
+                  <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center gap-4">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#2D8CFF]/40 shrink-0 bg-slate-900 shadow-md">
+                      <img 
+                        src={profile.avatarUrl || '/assets/hissan-portrait.jpg'} 
+                        alt="About card preview" 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover object-top"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#2D8CFF] uppercase tracking-wider block font-semibold">About Card</span>
+                      <p className="text-xs text-slate-300 font-medium mt-0.5">1:1 Square Avatar</p>
+                      <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#2D8CFF]/10 text-[#2D8CFF] border border-[#2D8CFF]/20">Active</span>
+                    </div>
+                  </div>
+
+                  {/* CV / Resume Preview */}
+                  <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center gap-4">
+                    <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-[#DE1B39] shrink-0 bg-slate-900 shadow-md">
+                      <img 
+                        src={profile.avatarUrl || '/assets/hissan-portrait.jpg'} 
+                        alt="CV avatar preview" 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover object-top"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#DE1B39] uppercase tracking-wider block font-semibold">CV / Resume</span>
+                      <p className="text-xs text-slate-300 font-medium mt-0.5">Circular CV Header</p>
+                      <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#DE1B39]/10 text-[#DE1B39] border border-[#DE1B39]/20">Active</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* DIRECT URL INPUT */}
+                <div className="space-y-1.5 pt-2">
+                  <label className="text-xs font-mono text-slate-400 block">Or Enter Direct Image URL (Cloudinary, Imgur, GitHub, etc.):</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://example.com/my-photo.jpg"
+                      value={customPhotoUrl}
+                      onChange={(e) => setCustomPhotoUrl(e.target.value)}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono focus:border-emerald-500 focus:outline-none text-slate-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCustomPhotoUrl}
+                      disabled={!customPhotoUrl.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs transition disabled:opacity-40 cursor-pointer"
+                    >
+                      Apply URL
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <form

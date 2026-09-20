@@ -1,14 +1,5 @@
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signOut as firebaseSignOut, 
-  onAuthStateChanged as firebaseOnAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  type User 
-} from 'firebase/auth';
-import { auth, isFirebaseConfigured } from './config';
+import type { User } from 'firebase/auth';
+import { isFirebaseConfigured, getFirebaseAuth } from './config';
 
 export interface AdminUser {
   uid: string;
@@ -20,18 +11,22 @@ export interface AdminUser {
 const LOCAL_ADMIN_KEY = 'hissan_portfolio_admin_session';
 
 export async function loginWithGoogle(): Promise<AdminUser> {
-  if (isFirebaseConfigured() && auth) {
+  if (isFirebaseConfigured()) {
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const userCredential = await signInWithPopup(auth, provider);
-      const user = userCredential.user;
-      return {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || user.email?.split('@')[0] || 'Hissan Sethi (Admin)',
-        isMock: false,
-      };
+      const auth = await getFirebaseAuth();
+      if (auth) {
+        const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const userCredential = await signInWithPopup(auth, provider);
+        const user = userCredential.user;
+        return {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email?.split('@')[0] || 'Hissan Sethi (Admin)',
+          isMock: false,
+        };
+      }
     } catch (err: any) {
       const code = err?.code || '';
       const msg = err?.message || '';
@@ -48,16 +43,20 @@ export async function loginWithGoogle(): Promise<AdminUser> {
 
 export async function loginAdmin(email: string, password: string): Promise<AdminUser> {
   // If Firebase Auth is configured and initialized
-  if (isFirebaseConfigured() && auth) {
+  if (isFirebaseConfigured()) {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      return {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || 'Hissan Sethi (Admin)',
-        isMock: false,
-      };
+      const auth = await getFirebaseAuth();
+      if (auth) {
+        const { signInWithEmailAndPassword } = await import('firebase/auth');
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        return {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || 'Hissan Sethi (Admin)',
+          isMock: false,
+        };
+      }
     } catch (err: any) {
       throw err;
     }
@@ -68,26 +67,34 @@ export async function loginAdmin(email: string, password: string): Promise<Admin
 }
 
 export async function registerAdmin(email: string, password: string): Promise<AdminUser> {
-  if (isFirebaseConfigured() && auth) {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    return {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || 'Hissan Sethi (Admin)',
-      isMock: false,
-    };
+  if (isFirebaseConfigured()) {
+    const auth = await getFirebaseAuth();
+    if (auth) {
+      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      return {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || 'Hissan Sethi (Admin)',
+        isMock: false,
+      };
+    }
   }
 
   return loginLocalAdmin(email, password);
 }
 
 export async function resetAdminPassword(email: string): Promise<void> {
-  if (isFirebaseConfigured() && auth) {
-    await sendPasswordResetEmail(auth, email);
-  } else {
-    throw new Error('Firebase Auth is not configured for password reset.');
+  if (isFirebaseConfigured()) {
+    const auth = await getFirebaseAuth();
+    if (auth) {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      await sendPasswordResetEmail(auth, email);
+      return;
+    }
   }
+  throw new Error('Firebase Auth is not configured for password reset.');
 }
 
 export async function loginLocalAdmin(email: string = 'hissansethi0@gmail.com', password?: string): Promise<AdminUser> {
@@ -102,9 +109,13 @@ export async function loginLocalAdmin(email: string = 'hissansethi0@gmail.com', 
 }
 
 export async function logoutAdmin(): Promise<void> {
-  if (isFirebaseConfigured() && auth) {
+  if (isFirebaseConfigured()) {
     try {
-      await firebaseSignOut(auth);
+      const auth = await getFirebaseAuth();
+      if (auth) {
+        const { signOut } = await import('firebase/auth');
+        await signOut(auth);
+      }
     } catch (e) {
       console.warn('Firebase signout warning:', e);
     }
@@ -113,28 +124,41 @@ export async function logoutAdmin(): Promise<void> {
 }
 
 export function subscribeToAuthChanges(callback: (user: AdminUser | null) => void): () => void {
-  if (isFirebaseConfigured() && auth) {
-    const unsubscribe = firebaseOnAuthStateChanged(auth, (firebaseUser: User | null) => {
-      if (firebaseUser) {
-        callback({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName || 'Hissan Sethi (Admin)',
-          isMock: false,
-        });
-      } else {
-        // Check local storage fallback if no Firebase user
-        const local = localStorage.getItem(LOCAL_ADMIN_KEY);
-        callback(local ? JSON.parse(local) : null);
-      }
-    });
-    return unsubscribe;
+  // Check local session immediately for instant 0ms restoration
+  const local = localStorage.getItem(LOCAL_ADMIN_KEY);
+  if (local) {
+    try {
+      callback(JSON.parse(local));
+    } catch {
+      callback(null);
+    }
+  } else {
+    callback(null);
   }
 
-  // Fallback observer
-  const local = localStorage.getItem(LOCAL_ADMIN_KEY);
-  callback(local ? JSON.parse(local) : null);
-  
+  if (isFirebaseConfigured()) {
+    let unsubscribe = () => {};
+    getFirebaseAuth().then(async (auth) => {
+      if (!auth) return;
+      try {
+        const { onAuthStateChanged } = await import('firebase/auth');
+        unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
+          if (firebaseUser) {
+            callback({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || 'Hissan Sethi (Admin)',
+              isMock: false,
+            });
+          }
+        });
+      } catch (err) {
+        console.warn('Auth observer setup failed:', err);
+      }
+    });
+    return () => unsubscribe();
+  }
+
   const handleStorageChange = () => {
     const updated = localStorage.getItem(LOCAL_ADMIN_KEY);
     callback(updated ? JSON.parse(updated) : null);

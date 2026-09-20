@@ -97,12 +97,12 @@ export const About: React.FC = () => {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <img
-                    src="/assets/hissan-portrait.jpg"
+                    src={profile.avatarUrl || '/assets/hissan-portrait.jpg'}
                     alt={profile.name}
                     referrerPolicy="no-referrer"
                     className="w-16 h-16 rounded-2xl object-cover object-top border border-[#2D8CFF]/40 shadow-md"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = profile.avatarUrl;
+                      (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';
                     }}
                   />
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1683FF] border-2 border-[#0D141E]" />

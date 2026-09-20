@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { ArrowRight, Download, Sparkles } from 'lucide-react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { ResumeModal } from './ResumeModal';
 import { scrollToSection } from '../utils/navigation';
+
+const ResumeModal = React.lazy(() => import('./ResumeModal').then((m) => ({ default: m.ResumeModal })));
 
 export const Hero: React.FC = () => {
   const { profile } = usePortfolio();
@@ -183,15 +184,22 @@ export const Hero: React.FC = () => {
 
               {/* 100% Original Portrait Presentation - No filters, no masking */}
               <div className="relative w-full aspect-[3/4] max-w-[340px] sm:max-w-[380px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-[#0d141e]">
-                <img
-                  src="/assets/hissan-portrait.jpg"
-                  alt="Hissan Sethi - Full Stack Web Developer"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover object-top"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/src/assets/images/hissan_sunglasses_portrait_1789814046078.jpg';
-                  }}
-                />
+                <picture>
+                  {!profile.avatarUrl && (
+                    <source srcSet="/assets/hissan-portrait.webp" type="image/webp" />
+                  )}
+                  <img
+                    src={profile.avatarUrl || '/assets/hissan-portrait.jpg'}
+                    alt="Hissan Sethi - Full Stack Web Developer"
+                    referrerPolicy="no-referrer"
+                    decoding="async"
+                    loading="eager"
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';
+                    }}
+                  />
+                </picture>
               </div>
 
               {/* Typography Banner beside/below portrait matching mockup */}
@@ -216,11 +224,15 @@ export const Hero: React.FC = () => {
         </div>
       </div>
 
-      {/* Interactive Resume Modal for CV downloads & previews */}
-      <ResumeModal
-        isOpen={resumeModalOpen}
-        onClose={() => setResumeModalOpen(false)}
-      />
+      {/* Interactive Resume Modal for CV downloads & previews (lazy loaded on demand) */}
+      {resumeModalOpen && (
+        <Suspense fallback={null}>
+          <ResumeModal
+            isOpen={resumeModalOpen}
+            onClose={() => setResumeModalOpen(false)}
+          />
+        </Suspense>
+      )}
     </section>
   );
 };

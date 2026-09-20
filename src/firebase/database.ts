@@ -1,5 +1,4 @@
-import { ref, get, set, update, remove, push, onValue, off } from 'firebase/database';
-import { database, isFirebaseConfigured } from './config';
+import { isFirebaseConfigured, getFirebaseDatabase } from './config';
 
 /**
  * Clean Realtime Database helper layer
@@ -26,11 +25,14 @@ export const DB_PATHS = {
 };
 
 // Generic read from Realtime Database with strict timeout to ensure lightning-fast initial renders
-export async function getDatabaseData<T>(path: string, timeoutMs: number = 1500): Promise<T | null> {
-  if (!isFirebaseConfigured() || !database) {
+export async function getDatabaseData<T>(path: string, timeoutMs: number = 800): Promise<T | null> {
+  if (!isFirebaseConfigured()) {
     return null;
   }
   try {
+    const database = await getFirebaseDatabase();
+    if (!database) return null;
+    const { ref, get } = await import('firebase/database');
     const dbRef = ref(database, path);
     // Timeout promise to prevent blocking if connection takes too long
     const timeoutPromise = new Promise<null>((resolve) => 
@@ -52,10 +54,13 @@ export async function getDatabaseData<T>(path: string, timeoutMs: number = 1500)
 
 // Generic write / overwrite to Realtime Database
 export async function setDatabaseData<T>(path: string, data: T): Promise<boolean> {
-  if (!isFirebaseConfigured() || !database) {
+  if (!isFirebaseConfigured()) {
     return false;
   }
   try {
+    const database = await getFirebaseDatabase();
+    if (!database) return false;
+    const { ref, set } = await import('firebase/database');
     const dbRef = ref(database, path);
     await set(dbRef, data);
     return true;
@@ -67,10 +72,13 @@ export async function setDatabaseData<T>(path: string, data: T): Promise<boolean
 
 // Push a new record with auto-generated key (e.g. for messages)
 export async function pushDatabaseData<T>(path: string, data: T): Promise<string | null> {
-  if (!isFirebaseConfigured() || !database) {
+  if (!isFirebaseConfigured()) {
     return null;
   }
   try {
+    const database = await getFirebaseDatabase();
+    if (!database) return null;
+    const { ref, push, set } = await import('firebase/database');
     const dbRef = ref(database, path);
     const newRef = push(dbRef);
     await set(newRef, data);
@@ -83,10 +91,13 @@ export async function pushDatabaseData<T>(path: string, data: T): Promise<string
 
 // Update partial fields
 export async function updateDatabaseData(path: string, updates: Record<string, unknown>): Promise<boolean> {
-  if (!isFirebaseConfigured() || !database) {
+  if (!isFirebaseConfigured()) {
     return false;
   }
   try {
+    const database = await getFirebaseDatabase();
+    if (!database) return false;
+    const { ref, update } = await import('firebase/database');
     const dbRef = ref(database, path);
     await update(dbRef, updates);
     return true;
@@ -98,10 +109,13 @@ export async function updateDatabaseData(path: string, updates: Record<string, u
 
 // Delete a record
 export async function deleteDatabaseData(path: string): Promise<boolean> {
-  if (!isFirebaseConfigured() || !database) {
+  if (!isFirebaseConfigured()) {
     return false;
   }
   try {
+    const database = await getFirebaseDatabase();
+    if (!database) return false;
+    const { ref, remove } = await import('firebase/database');
     const dbRef = ref(database, path);
     await remove(dbRef);
     return true;
@@ -116,25 +130,35 @@ export function subscribeToDatabasePath<T>(
   path: string,
   callback: (data: T | null) => void
 ): () => void {
-  if (!isFirebaseConfigured() || !database) {
+  if (!isFirebaseConfigured()) {
     return () => {};
   }
-  const dbRef = ref(database, path);
-  const listener = onValue(
-    dbRef,
-    (snapshot) => {
-      if (snapshot.exists()) {
-        callback(snapshot.val() as T);
-      } else {
-        callback(null);
-      }
-    },
-    (error) => {
-      console.warn(`Realtime listener error on ${path}:`, error);
+  let unsubscribe = () => {};
+  getFirebaseDatabase().then(async (database) => {
+    if (!database) return;
+    try {
+      const { ref, onValue, off } = await import('firebase/database');
+      const dbRef = ref(database, path);
+      const listener = onValue(
+        dbRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            callback(snapshot.val() as T);
+          } else {
+            callback(null);
+          }
+        },
+        (error) => {
+          console.warn(`Realtime listener error on ${path}:`, error);
+        }
+      );
+      unsubscribe = () => off(dbRef, 'value', listener);
+    } catch (err) {
+      console.warn('Realtime listener registration failed:', err);
     }
-  );
+  });
 
   return () => {
-    off(dbRef, 'value', listener);
+    unsubscribe();
   };
 }

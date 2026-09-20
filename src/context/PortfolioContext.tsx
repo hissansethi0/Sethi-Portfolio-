@@ -39,36 +39,55 @@ interface PortfolioContextType {
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
+const getInitialState = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const item = localStorage.getItem(key);
+    if (!item) return fallback;
+    return JSON.parse(item);
+  } catch {
+    return fallback;
+  }
+};
+
 export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
-  const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
-  const [experience, setExperience] = useState<Experience[]>(INITIAL_EXPERIENCE);
-  const [education, setEducation] = useState<Education[]>(INITIAL_EDUCATION);
+  const [profile, setProfile] = useState<ProfileData>(() => getInitialState('hissan_portfolio_profile', INITIAL_PROFILE));
+  const [projects, setProjects] = useState<Project[]>(() => getInitialState('hissan_portfolio_projects', INITIAL_PROJECTS));
+  const [skills, setSkills] = useState<Skill[]>(() => getInitialState('hissan_portfolio_skills', INITIAL_SKILLS));
+  const [experience, setExperience] = useState<Experience[]>(() => getInitialState('hissan_portfolio_experience', INITIAL_EXPERIENCE));
+  const [education, setEducation] = useState<Education[]>(() => getInitialState('hissan_portfolio_education', INITIAL_EDUCATION));
   const [messages, setMessages] = useState<ContactMessage[]>([]);
-  const [settings, setSettings] = useState<PortfolioSettings>(INITIAL_SETTINGS);
+  const [settings, setSettings] = useState<PortfolioSettings>(() => getInitialState('hissan_portfolio_settings', INITIAL_SETTINGS));
   // Instant readiness: Start with false so the site renders immediately with initial/cached data
   const [loading, setLoading] = useState<boolean>(false);
 
   const refreshAll = useCallback(async () => {
     try {
-      const [profData, projData, skillData, expData, eduData, msgData, settData] = await Promise.all([
+      // Primary critical view data
+      const [profData, projData, skillData] = await Promise.all([
         fetchProfile(),
         fetchProjects(),
         fetchSkills(),
-        fetchExperience(),
-        fetchEducation(),
-        fetchMessages(),
-        fetchSettings(),
       ]);
 
       if (profData) setProfile(profData);
       if (projData && projData.length > 0) setProjects(projData);
       if (skillData && skillData.length > 0) setSkills(skillData);
-      if (expData) setExperience(expData);
-      if (eduData) setEducation(eduData);
-      if (msgData) setMessages(msgData);
-      if (settData) setSettings(settData);
+
+      // Asynchronously fetch remaining secondary data without delaying main render
+      Promise.all([
+        fetchExperience(),
+        fetchEducation(),
+        fetchMessages(),
+        fetchSettings(),
+      ]).then(([expData, eduData, msgData, settData]) => {
+        if (expData) setExperience(expData);
+        if (eduData) setEducation(eduData);
+        if (msgData) setMessages(msgData);
+        if (settData) setSettings(settData);
+      }).catch((err) => {
+        console.warn('Secondary data fetch error:', err);
+      });
     } catch (err) {
       console.warn('Error refreshing portfolio data:', err);
     } finally {

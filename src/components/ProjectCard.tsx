@@ -28,6 +28,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onQuickView }
           alt={project.title}
           className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0D141E] via-transparent to-transparent opacity-60" />
       </div>

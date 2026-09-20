@@ -1,6 +1,6 @@
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
-import { getDatabase, type Database } from 'firebase/database';
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
+import type { Database } from 'firebase/database';
 
 /**
  * =========================================================================
@@ -48,17 +48,50 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let database: Database | null = null;
 
-if (isFirebaseConfigured()) {
-  try {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    auth = getAuth(app);
-    database = getDatabase(app);
-    console.info('✓ Firebase Realtime Database and Auth initialized successfully.');
-  } catch (err) {
-    console.warn('Firebase initialization error, running in local fallback mode:', err);
+export async function getFirebaseApp(): Promise<FirebaseApp | null> {
+  if (!isFirebaseConfigured()) return null;
+  if (!app) {
+    try {
+      const { initializeApp, getApps, getApp } = await import('firebase/app');
+      app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    } catch (err) {
+      console.warn('Firebase app initialization failed:', err);
+      return null;
+    }
   }
-} else {
-  console.info('ℹ Firebase credentials blank: Running in robust local/preview mode. Add credentials in src/firebase/config.ts or .env to sync with live Firebase.');
+  return app;
+}
+
+export async function getFirebaseAuth(): Promise<Auth | null> {
+  if (!isFirebaseConfigured()) return null;
+  const firebaseApp = await getFirebaseApp();
+  if (!firebaseApp) return null;
+  if (!auth) {
+    try {
+      const { getAuth } = await import('firebase/auth');
+      auth = getAuth(firebaseApp);
+    } catch (err) {
+      console.warn('Firebase auth initialization failed:', err);
+      return null;
+    }
+  }
+  return auth;
+}
+
+export async function getFirebaseDatabase(): Promise<Database | null> {
+  if (!isFirebaseConfigured()) return null;
+  const firebaseApp = await getFirebaseApp();
+  if (!firebaseApp) return null;
+  if (!database) {
+    try {
+      const { getDatabase } = await import('firebase/database');
+      database = getDatabase(firebaseApp);
+    } catch (err) {
+      console.warn('Firebase database initialization failed:', err);
+      return null;
+    }
+  }
+  return database;
 }
 
 export { app, auth, database, firebaseConfig };

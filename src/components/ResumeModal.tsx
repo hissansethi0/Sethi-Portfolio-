@@ -4,6 +4,7 @@ import {
   MapPin, Phone, Mail, Globe, Github, Linkedin, 
   Code2, Languages, User, Briefcase, GraduationCap, Calendar, ExternalLink
 } from 'lucide-react';
+import { usePortfolio } from '../context/PortfolioContext';
 
 interface ResumeModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface ResumeModalProps {
 }
 
 export const ResumeModal: React.FC<ResumeModalProps> = ({ isOpen, onClose }) => {
+  const { profile } = usePortfolio();
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -368,7 +370,7 @@ LANGUAGES
   <div class="cv-container">
     <div class="header">
       <div class="avatar-wrap">
-        <img src="https://hs-cloud.netlify.app/assets/hissan-cv-avatar.jpg" onerror="this.onerror=null; this.src='/assets/hissan-cv-avatar.jpg';" alt="Hissan Sethi" />
+        <img src="${profile.avatarUrl || '/assets/hissan-cv-avatar.jpg'}" onerror="this.onerror=null; this.src='/assets/hissan-cv-avatar.jpg';" alt="${profile.name || 'Hissan Sethi'}" />
       </div>
       <div class="header-info">
         <h1 class="name">HISSAN SETHI</h1>
@@ -691,8 +693,8 @@ LANGUAGES
               {/* Circular Avatar with Red Ring */}
               <div className="shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-full border-[4px] border-[#DE1B39] overflow-hidden bg-[#8b0000] shadow-[0_4px_20px_rgba(222,27,57,0.4)]">
                 <img 
-                  src="/assets/hissan-cv-avatar.jpg" 
-                  alt="Hissan Sethi" 
+                  src={profile.avatarUrl || '/assets/hissan-cv-avatar.jpg'} 
+                  alt={profile.name || 'Hissan Sethi'} 
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover object-top"
                   onError={(e) => {
