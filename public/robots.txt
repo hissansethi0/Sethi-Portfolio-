@@ -1,0 +1,12 @@
+# robots.txt for https://hissansethi.netlify.app
+
+User-agent: *
+Allow: /
+Allow: /project/*
+Allow: /assets/*
+Disallow: /admin/
+Disallow: /admin/login
+Disallow: /admin/dashboard
+
+# XML Sitemap Location
+Sitemap: https://hissansethi.netlify.app/sitemap.xml

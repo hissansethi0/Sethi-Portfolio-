@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- Primary Homepage / Portfolio Root -->
+  <url>
+    <loc>https://hissansethi.netlify.app/</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://hissansethi.netlify.app/assets/hissan-portrait.jpg</image:loc>
+      <image:title>Hissan Sethi — Full Stack Web Developer</image:title>
+      <image:caption>Official portrait of Hissan Sethi, Full Stack Web Developer</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: HS Cloud -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/hs-cloud</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>HS Cloud — Cloud Storage and File Management</image:title>
+      <image:caption>HS Cloud project screenshot and architecture by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: HS Restaurant -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/hs-restaurant</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>HS Restaurant — Dining Website and Reservations</image:title>
+      <image:caption>HS Restaurant culinary showcase by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: HS Fragrances -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/hs-fragrances</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>HS Fragrances — Luxury Perfume Store Website</image:title>
+      <image:caption>HS Fragrances luxury perfume catalog by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: HS Weathering -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/hs-weathering</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>HS Weathering — Live Weather Forecast Web App</image:title>
+      <image:caption>HS Weathering dynamic forecast engine by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: Charsadda Chapal -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/charsadda-chapal</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>Charsadda Chapal — Handmade Footwear Store</image:title>
+      <image:caption>Traditional handmade footwear showcase by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: FGPBS Web Portal -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/fgpbs</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>FGPBS Web Portal — Educational Institution Portal</image:title>
+      <image:caption>FGPBS academic circular and institution portal by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: Sethi Tech Store -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/sethitechstore</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>Sethi Tech Store — Electronics &amp; Hardware Showcase</image:title>
+      <image:caption>Sethi Tech Store consumer technology catalog by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Project Details: HS Calculation -->
+  <url>
+    <loc>https://hissansethi.netlify.app/project/hs-calculation</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1587145820266-a5951ee6f620?auto=format&amp;fit=crop&amp;w=1200&amp;q=80</image:loc>
+      <image:title>HS Calculation — Precision Calculator Engine</image:title>
+      <image:caption>Mathematical calculation engine interface by Hissan Sethi</image:caption>
+    </image:image>
+  </url>
+
+</urlset>
