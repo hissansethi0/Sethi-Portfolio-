@@ -5,12 +5,19 @@ import {
   MessageSquare, User, Settings, LogOut, Plus, Trash2, Edit3, 
   ExternalLink, Upload, Star, CheckCircle, AlertCircle, Shield, 
   Menu, X, Eye, EyeOff, RefreshCw, Copy, Check, Sparkles,
-  Camera, RotateCcw, Image as ImageIcon 
+  Camera, RotateCcw, Image as ImageIcon, Cloud, AlertTriangle, CheckCircle2, UploadCloud
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { Project, Skill, Experience, Education, ContactMessage, ProfileData } from '../types';
-import { uploadImageToCloudinary } from '../services/cloudinaryService';
+import { 
+  uploadImageToCloudinary, 
+  uploadDataUrlToCloudinary, 
+  isBase64Image, 
+  isCloudinaryUrl, 
+  testCloudinaryConnection,
+  CloudinaryUploadResponse
+} from '../services/cloudinaryService';
 import { isFirebaseConfigured } from '../firebase/config';
 
 export const AdminDashboard: React.FC = () => {
@@ -60,61 +67,86 @@ export const AdminDashboard: React.FC = () => {
     navigate('/admin/login');
   };
 
-  // Profile Photo Management State & Handlers
+  // Profile Photo Management State & Handlers (Stored on Cloudinary, never localStorage)
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoUploadProgress, setPhotoUploadProgress] = useState<number | null>(null);
+  const [isMigratingAvatar, setIsMigratingAvatar] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState<number | null>(null);
   const [customPhotoUrl, setCustomPhotoUrl] = useState('');
   const photoFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // Standalone Cloudinary Media Center State
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaUploadProgress, setMediaUploadProgress] = useState<number | null>(null);
+  const [lastUploadedMedia, setLastUploadedMedia] = useState<CloudinaryUploadResponse | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; url?: string } | null>(null);
+  const [isTestingCloudinary, setIsTestingCloudinary] = useState(false);
+  const [isBatchMigrating, setIsBatchMigrating] = useState(false);
+
+  // Direct Cloudinary upload handler for profile photo (never saves base64 in local storage)
   const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      showNotification('Please select an image file (JPEG, PNG, WEBP)', 'error');
+      showNotification('Please select a valid image file (JPEG, PNG, WEBP)', 'error');
+      return;
+    }
+
+    if (file.size > 12 * 1024 * 1024) {
+      showNotification('File exceeds maximum size of 12MB', 'error');
       return;
     }
 
     setPhotoUploading(true);
+    setPhotoUploadProgress(10);
+    showNotification('Uploading profile photo directly to Cloudinary...', 'success');
+
     try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new window.Image();
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          let { width, height } = img;
-          const maxDim = 1200;
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
-            const updated = { ...profile, avatarUrl: optimizedDataUrl };
-            await updateProfile(updated);
-            showNotification('Profile photo updated successfully across Hero, About & CV!');
-          }
-          setPhotoUploading(false);
-        };
-        img.onerror = () => {
-          showNotification('Could not decode the selected image', 'error');
-          setPhotoUploading(false);
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error(err);
-      showNotification('Failed to process image upload', 'error');
+      const res = await uploadImageToCloudinary(
+        file, 
+        (percent) => setPhotoUploadProgress(percent),
+        { cloudName: settings.cloudinaryCloudName, uploadPreset: settings.cloudinaryUploadPreset }
+      );
+
+      const updated = { ...profile, avatarUrl: res.secure_url };
+      await updateProfile(updated);
+      showNotification('Profile photo uploaded to Cloudinary CDN successfully! No local storage used.', 'success');
+    } catch (err: any) {
+      console.error('Cloudinary photo upload error:', err);
+      showNotification(err?.message || 'Failed to upload photo to Cloudinary. Check upload preset settings.', 'error');
+    } finally {
       setPhotoUploading(false);
+      setPhotoUploadProgress(null);
+      if (photoFileInputRef.current) {
+        photoFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Migrates existing Base64 DataURL from LocalStorage directly to Cloudinary CDN
+  const handleMigrateAvatarToCloudinary = async () => {
+    if (!profile.avatarUrl || !isBase64Image(profile.avatarUrl)) return;
+    setIsMigratingAvatar(true);
+    setMigrationProgress(15);
+    showNotification('Migrating avatar from local storage to Cloudinary CDN...', 'success');
+
+    try {
+      const res = await uploadDataUrlToCloudinary(
+        profile.avatarUrl,
+        'hissan_profile_avatar.jpg',
+        (percent) => setMigrationProgress(percent),
+        { cloudName: settings.cloudinaryCloudName, uploadPreset: settings.cloudinaryUploadPreset }
+      );
+      const updated = { ...profile, avatarUrl: res.secure_url };
+      await updateProfile(updated);
+      showNotification('Successfully migrated photo to Cloudinary! Local storage freed.', 'success');
+    } catch (err: any) {
+      console.error('Migration failed:', err);
+      showNotification('Migration failed: ' + (err?.message || 'Check Cloudinary settings'), 'error');
+    } finally {
+      setIsMigratingAvatar(false);
+      setMigrationProgress(null);
     }
   };
 
@@ -140,9 +172,13 @@ export const AdminDashboard: React.FC = () => {
     try {
       setProjectUploadProgress(10);
       showNotification('Uploading image to Cloudinary...', 'success');
-      const res = await uploadImageToCloudinary(file, (percent) => {
-        setProjectUploadProgress(percent);
-      });
+      const res = await uploadImageToCloudinary(
+        file, 
+        (percent) => {
+          setProjectUploadProgress(percent);
+        },
+        { cloudName: settings.cloudinaryCloudName, uploadPreset: settings.cloudinaryUploadPreset }
+      );
       if (editingProject) {
         setEditingProject({ ...editingProject, image: res.secure_url });
       }
@@ -151,6 +187,89 @@ export const AdminDashboard: React.FC = () => {
     } catch (err: any) {
       setProjectUploadProgress(null);
       showNotification(err?.message || 'Failed to upload image. Please verify unsigned upload preset.', 'error');
+    }
+  };
+
+  // Standalone Cloudinary Media Center Uploader
+  const handleStandaloneMediaUpload = async (file: File) => {
+    setMediaUploading(true);
+    setMediaUploadProgress(10);
+    try {
+      showNotification('Uploading asset to Cloudinary...', 'success');
+      const res = await uploadImageToCloudinary(
+        file, 
+        (percent) => setMediaUploadProgress(percent),
+        { cloudName: settings.cloudinaryCloudName, uploadPreset: settings.cloudinaryUploadPreset }
+      );
+      setLastUploadedMedia(res);
+      showNotification('Asset uploaded to Cloudinary successfully!', 'success');
+    } catch (err: any) {
+      showNotification(err?.message || 'Upload failed', 'error');
+    } finally {
+      setMediaUploading(false);
+      setMediaUploadProgress(null);
+    }
+  };
+
+  // Tests the Cloudinary connection and unsigned upload preset
+  const handleTestCloudinary = async () => {
+    setIsTestingCloudinary(true);
+    setTestResult(null);
+    try {
+      const res = await testCloudinaryConnection(settings.cloudinaryCloudName, settings.cloudinaryUploadPreset);
+      setTestResult(res);
+      showNotification(res.message, res.success ? 'success' : 'error');
+    } catch (err: any) {
+      setTestResult({ success: false, message: err?.message || 'Connection failed' });
+      showNotification('Cloudinary connection test failed', 'error');
+    } finally {
+      setIsTestingCloudinary(false);
+    }
+  };
+
+  // Batch migrates any local storage / base64 images found across profile and projects
+  const handleBatchMigrateAllImages = async () => {
+    setIsBatchMigrating(true);
+    let migratedCount = 0;
+
+    try {
+      // 1. Profile avatar check
+      if (isBase64Image(profile.avatarUrl)) {
+        showNotification('Migrating profile avatar to Cloudinary...', 'success');
+        const res = await uploadDataUrlToCloudinary(
+          profile.avatarUrl,
+          'hissan_avatar.jpg',
+          undefined,
+          { cloudName: settings.cloudinaryCloudName, uploadPreset: settings.cloudinaryUploadPreset }
+        );
+        await updateProfile({ ...profile, avatarUrl: res.secure_url });
+        migratedCount++;
+      }
+
+      // 2. Project images check
+      for (const proj of projects) {
+        if (isBase64Image(proj.image)) {
+          showNotification(`Migrating project "${proj.title}" image to Cloudinary...`, 'success');
+          const res = await uploadDataUrlToCloudinary(
+            proj.image,
+            `${proj.id || 'project'}.jpg`,
+            undefined,
+            { cloudName: settings.cloudinaryCloudName, uploadPreset: settings.cloudinaryUploadPreset }
+          );
+          await addOrUpdateProject({ ...proj, image: res.secure_url });
+          migratedCount++;
+        }
+      }
+
+      if (migratedCount > 0) {
+        showNotification(`Successfully migrated ${migratedCount} image(s) to Cloudinary! Local storage completely purged of image data.`, 'success');
+      } else {
+        showNotification('Clean state: No base64 images found in local storage. All media is hosted on Cloudinary or external CDNs!', 'success');
+      }
+    } catch (err: any) {
+      showNotification('Batch migration error: ' + (err?.message || 'Check connection'), 'error');
+    } finally {
+      setIsBatchMigrating(false);
     }
   };
 
@@ -1067,12 +1186,23 @@ export const AdminDashboard: React.FC = () => {
               <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
                   <div>
-                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-emerald-400" />
-                      Profile Photograph & Portrait
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      This photo updates synchronously across your Hero Section, About Me card, and CV / Resume modal.
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-emerald-400" />
+                        Profile Photograph & Portrait
+                      </h4>
+                      {isCloudinaryUrl(profile.avatarUrl) ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <Cloud className="w-3 h-3" /> Cloudinary CDN Active
+                        </span>
+                      ) : isBase64Image(profile.avatarUrl) ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <AlertTriangle className="w-3 h-3" /> Local Storage Base64
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Uploaded directly to Cloudinary CDN and synchronized across your Hero Section, About Me card, and CV / Resume modal.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1092,12 +1222,12 @@ export const AdminDashboard: React.FC = () => {
                       {photoUploading ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          Processing Photo...
+                          <span>Uploading... {photoUploadProgress ? `${photoUploadProgress}%` : ''}</span>
                         </>
                       ) : (
                         <>
-                          <Upload className="w-3.5 h-3.5" />
-                          Upload from Device
+                          <Cloud className="w-3.5 h-3.5" />
+                          <span>Upload to Cloudinary</span>
                         </>
                       )}
                     </button>
@@ -1112,6 +1242,56 @@ export const AdminDashboard: React.FC = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* UPLOAD PROGRESS BAR */}
+                {photoUploadProgress !== null && (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
+                    <div className="flex items-center justify-between text-xs text-emerald-400 font-mono">
+                      <span>Uploading to Cloudinary CDN...</span>
+                      <span>{photoUploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-emerald-500 h-full transition-all duration-200" 
+                        style={{ width: `${photoUploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* BASE64 LOCAL STORAGE MIGRATION NOTICE */}
+                {isBase64Image(profile.avatarUrl) && (
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <h5 className="text-xs font-bold text-amber-300">Local Storage Base64 Image Detected</h5>
+                        <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
+                          Your profile image is currently stored as a large base64 data string in your browser's local storage.
+                          Migrate it to Cloudinary now to remove heavy storage bloat and enable fast CDN caching.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleMigrateAvatarToCloudinary}
+                      disabled={isMigratingAvatar}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition cursor-pointer shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                    >
+                      {isMigratingAvatar ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Migrating... {migrationProgress || 0}%</span>
+                        </>
+                      ) : (
+                        <>
+                          <Cloud className="w-3.5 h-3.5" />
+                          <span>Migrate to Cloudinary</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {/* ACTIVE PHOTO PREVIEWS (Hero, About, CV) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1174,6 +1354,25 @@ export const AdminDashboard: React.FC = () => {
                       <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#DE1B39]/10 text-[#DE1B39] border border-[#DE1B39]/20">Active</span>
                     </div>
                   </div>
+                </div>
+
+                {/* CURRENT PHOTO URL DETAILS */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 overflow-hidden">
+                  <div className="truncate max-w-full">
+                    <span className="text-slate-400">Current URL: </span>
+                    <span className="text-emerald-400 truncate select-all">{profile.avatarUrl}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(profile.avatarUrl);
+                      showNotification('Profile photo URL copied!');
+                    }}
+                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] shrink-0 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>Copy URL</span>
+                  </button>
                 </div>
 
                 {/* DIRECT URL INPUT */}
@@ -1333,16 +1532,55 @@ export const AdminDashboard: React.FC = () => {
           {activeTab === 'settings' && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-bold text-white">Portfolio Settings & Cloudinary</h3>
-                <p className="text-xs text-slate-400">Configure Cloudinary unsigned presets and client presentation options.</p>
+                <h3 className="text-lg font-bold text-white">Portfolio Settings & Cloudinary Media Service</h3>
+                <p className="text-xs text-slate-400">Configure Cloudinary unsigned presets, test connection, upload standalone assets, and purge local storage media.</p>
               </div>
 
+              {/* CLOUDINARY CONFIGURATION CARD */}
               <div className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 space-y-6">
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-white font-mono flex items-center gap-2">
-                    <Upload className="w-4 h-4 text-emerald-400" />
-                    <span>Cloudinary Media Settings</span>
-                  </h4>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+                    <h4 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                      <Cloud className="w-4 h-4 text-emerald-400" />
+                      <span>Cloudinary Media Configuration</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={handleTestCloudinary}
+                      disabled={isTestingCloudinary}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-2 transition cursor-pointer border border-slate-700 disabled:opacity-50"
+                    >
+                      {isTestingCloudinary ? (
+                        <>
+                          <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                          <span>Testing Connection...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3 text-emerald-400" />
+                          <span>Test Cloudinary Connection</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {testResult && (
+                    <div className={`p-3.5 rounded-xl text-xs font-mono flex items-start gap-2.5 ${
+                      testResult.success 
+                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' 
+                        : 'bg-rose-500/10 text-rose-300 border border-rose-500/20'
+                    }`}>
+                      {testResult.success ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p className="font-semibold">{testResult.success ? 'Cloudinary Verified Active' : 'Cloudinary Connection Warning'}</p>
+                        <p className="text-[11px] opacity-90 mt-0.5">{testResult.message}</p>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -1351,7 +1589,8 @@ export const AdminDashboard: React.FC = () => {
                         type="text"
                         value={settings.cloudinaryCloudName}
                         onChange={(e) => updatePortfolioSettings({ ...settings, cloudinaryCloudName: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400 focus:border-emerald-500 focus:outline-none"
+                        placeholder="dcaomiuls"
                       />
                     </div>
 
@@ -1361,16 +1600,52 @@ export const AdminDashboard: React.FC = () => {
                         type="text"
                         value={settings.cloudinaryUploadPreset}
                         onChange={(e) => updatePortfolioSettings({ ...settings, cloudinaryUploadPreset: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400 focus:border-emerald-500 focus:outline-none"
+                        placeholder="Sethi-Portfoilo"
                       />
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-slate-400 space-y-1">
-                    <p className="text-slate-300 font-semibold">Cloudinary Security Standard:</p>
-                    <p>• Only the Cloud Name & Unsigned Preset are stored on the frontend.</p>
-                    <p>• The Cloudinary Secret API is never exposed to the client.</p>
+                    <p className="text-slate-300 font-semibold flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Zero-LocalStorage Media Standard:</span>
+                    </p>
+                    <p>• All media files are uploaded directly to Cloudinary via client-side unsigned preset.</p>
+                    <p>• Local storage is strictly reserved for lightweight configuration; no heavy base64 images are stored in browser storage.</p>
+                    <p>• Images are served via Cloudinary's worldwide CDN with automated optimization.</p>
                   </div>
+                </div>
+
+                {/* BATCH MIGRATION UTILITY */}
+                <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h5 className="text-xs font-bold text-white flex items-center gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Purge Local Storage Media & Migrate to Cloudinary</span>
+                    </h5>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Scans profile avatar and all project entries for any base64 data URLs in local storage and migrates them to Cloudinary CDN.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBatchMigrateAllImages}
+                    disabled={isBatchMigrating}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition cursor-pointer shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                  >
+                    {isBatchMigrating ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Migrating Media...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Cloud className="w-3.5 h-3.5" />
+                        <span>Migrate Local Storage Images</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
@@ -1385,6 +1660,119 @@ export const AdminDashboard: React.FC = () => {
                     className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
                   />
                 </div>
+              </div>
+
+              {/* STANDALONE CLOUDINARY MEDIA UPLOADER */}
+              <div className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                      <UploadCloud className="w-4 h-4 text-emerald-400" />
+                      <span>Cloudinary Media Center (Upload & Host Any Image)</span>
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Upload any screenshot, project mock, or portrait to Cloudinary and retrieve its instant CDN link.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-xl border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-950/40 text-center transition">
+                  <input
+                    type="file"
+                    id="standalone-cloudinary-file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleStandaloneMediaUpload(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="standalone-cloudinary-file"
+                    className="flex flex-col items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                      {mediaUploading ? (
+                        <RefreshCw className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <UploadCloud className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white">
+                        {mediaUploading ? `Uploading... ${mediaUploadProgress || 0}%` : 'Click to select image or drag and drop'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                        PNG, JPG, WEBP, GIF up to 12MB • Automatically stored on Cloudinary
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {mediaUploadProgress !== null && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-mono text-emerald-400">
+                      <span>Cloudinary Upload</span>
+                      <span>{mediaUploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full transition-all duration-200" style={{ width: `${mediaUploadProgress}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                {lastUploadedMedia && (
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Uploaded to Cloudinary
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        {lastUploadedMedia.format?.toUpperCase()} {lastUploadedMedia.width ? `• ${lastUploadedMedia.width}x${lastUploadedMedia.height}` : ''}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={lastUploadedMedia.secure_url} 
+                        alt="Uploaded preview" 
+                        className="w-14 h-14 rounded-lg object-cover border border-slate-700 bg-slate-900 shrink-0" 
+                      />
+                      <div className="flex-1 min-w-0">
+                        <input
+                          type="text"
+                          readOnly
+                          value={lastUploadedMedia.secure_url}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300 select-all"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(lastUploadedMedia.secure_url);
+                          showNotification('Cloudinary URL copied to clipboard!');
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await updateProfile({ ...profile, avatarUrl: lastUploadedMedia.secure_url });
+                          showNotification('Profile avatar updated to Cloudinary URL!');
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold font-mono flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        <User className="w-3.5 h-3.5" />
+                        <span>Set as Avatar</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1496,27 +1884,68 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Cloudinary Image Upload / URL */}
-              <div className="space-y-2 p-4 rounded-xl bg-slate-950 border border-slate-800/80">
-                <label className="text-slate-300 font-bold flex items-center justify-between">
-                  <span>Project Image (Cloudinary or Direct URL)</span>
-                  {projectUploadProgress !== null && (
-                    <span className="text-emerald-400">{projectUploadProgress}%</span>
-                  )}
-                </label>
+              <div className="space-y-2.5 p-4 rounded-xl bg-slate-950 border border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-slate-300 font-bold text-xs flex items-center gap-2">
+                    <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Project Image (Cloudinary Hosted)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {isCloudinaryUrl(editingProject.image) ? (
+                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        Cloudinary CDN
+                      </span>
+                    ) : isBase64Image(editingProject.image) ? (
+                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        LocalStorage Base64
+                      </span>
+                    ) : null}
+                    {projectUploadProgress !== null && (
+                      <span className="text-emerald-400 text-xs font-mono">{projectUploadProgress}%</span>
+                    )}
+                  </div>
+                </div>
+
+                {isBase64Image(editingProject.image) && (
+                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs gap-2">
+                    <span className="text-amber-300 text-[11px]">This image is in local storage. Migrate to Cloudinary:</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          showNotification('Migrating project image to Cloudinary...', 'success');
+                          const res = await uploadDataUrlToCloudinary(
+                            editingProject.image,
+                            `${editingProject.id || 'project'}.jpg`,
+                            undefined,
+                            { cloudName: settings.cloudinaryCloudName, uploadPreset: settings.cloudinaryUploadPreset }
+                          );
+                          setEditingProject({ ...editingProject, image: res.secure_url });
+                          showNotification('Project image migrated to Cloudinary!', 'success');
+                        } catch (err: any) {
+                          showNotification(err?.message || 'Migration failed', 'error');
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] whitespace-nowrap cursor-pointer"
+                    >
+                      Migrate to Cloudinary
+                    </button>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3">
                   <input
                     type="text"
                     value={editingProject.image}
                     onChange={(e) => setEditingProject({ ...editingProject, image: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs font-mono"
                     placeholder="https://res.cloudinary.com/..."
                   />
                   
                   {/* File selector for Cloudinary unsigned upload */}
-                  <label className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white cursor-pointer whitespace-nowrap flex items-center gap-1.5 text-xs">
-                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Upload</span>
+                  <label className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold cursor-pointer whitespace-nowrap flex items-center gap-1.5 text-xs transition shadow-md shadow-emerald-500/20">
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span>Upload to Cloudinary</span>
                     <input
                       type="file"
                       accept="image/*"

@@ -15,21 +15,73 @@ export interface CloudinaryUploadResponse {
   width?: number;
   height?: number;
   format?: string;
+  bytes?: number;
+  created_at?: string;
 }
 
-export const CLOUDINARY_CONFIG = {
-  cloudName: (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dcaomiuls').trim(),
-  uploadPreset: (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'Sethi-Portfoilo').trim(),
-};
+/**
+ * Dynamically resolves Cloudinary configuration from settings, env vars, or defaults.
+ */
+export function getCloudinaryConfig(): { cloudName: string; uploadPreset: string } {
+  let cloudName = 'dcaomiuls';
+  let uploadPreset = 'Sethi-Portfoilo';
+
+  // 1. Check local storage user settings if previously customized
+  try {
+    const raw = localStorage.getItem('hissan_portfolio_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.cloudinaryCloudName?.trim()) {
+        cloudName = parsed.cloudinaryCloudName.trim();
+      }
+      if (parsed.cloudinaryUploadPreset?.trim()) {
+        uploadPreset = parsed.cloudinaryUploadPreset.trim();
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Vite environment variables if available
+  if (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) {
+    cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME.trim();
+  }
+  if (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET) {
+    uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET.trim();
+  }
+
+  return { cloudName, uploadPreset };
+}
+
+export const CLOUDINARY_CONFIG = getCloudinaryConfig();
 
 /**
- * Uploads an image file to Cloudinary using an Unsigned Upload Preset.
+ * Checks if a given string is a raw Base64 Data URL (stored in LocalStorage).
+ */
+export function isBase64Image(url?: string | null): boolean {
+  if (!url) return false;
+  return url.startsWith('data:image/') || url.includes(';base64,');
+}
+
+/**
+ * Checks if a given URL is hosted on Cloudinary CDN.
+ */
+export function isCloudinaryUrl(url?: string | null): boolean {
+  if (!url) return false;
+  return url.includes('cloudinary.com') || url.includes('res.cloudinary.com');
+}
+
+/**
+ * Uploads an image file or blob to Cloudinary using an Unsigned Upload Preset.
  */
 export async function uploadImageToCloudinary(
-  file: File,
-  onProgress?: (percent: number) => void
+  file: File | Blob,
+  onProgress?: (percent: number) => void,
+  overrideConfig?: { cloudName?: string; uploadPreset?: string }
 ): Promise<CloudinaryUploadResponse> {
-  const { cloudName, uploadPreset } = CLOUDINARY_CONFIG;
+  const currentConfig = getCloudinaryConfig();
+  const cloudName = overrideConfig?.cloudName?.trim() || currentConfig.cloudName;
+  const uploadPreset = overrideConfig?.uploadPreset?.trim() || currentConfig.uploadPreset;
 
   if (!cloudName || !uploadPreset) {
     throw new Error('Cloudinary cloud name or upload preset is not configured.');
@@ -58,7 +110,7 @@ export async function uploadImageToCloudinary(
         try {
           const response = JSON.parse(xhr.responseText) as CloudinaryUploadResponse;
           resolve(response);
-        } catch (e) {
+        } catch {
           reject(new Error('Failed to parse Cloudinary response.'));
         }
       } else {
@@ -66,7 +118,7 @@ export async function uploadImageToCloudinary(
         try {
           const res = JSON.parse(xhr.responseText);
           errorMsg = res.error?.message || errorMsg;
-        } catch (e) {
+        } catch {
           // ignore parse error
         }
         reject(new Error(`${errorMsg} (Status: ${xhr.status})`));
@@ -74,9 +126,60 @@ export async function uploadImageToCloudinary(
     };
 
     xhr.onerror = () => {
-      reject(new Error('Network error occurred during Cloudinary upload. Ensure unsigned preset is configured.'));
+      reject(new Error('Network error during Cloudinary upload. Ensure unsigned preset allows unsigned uploads.'));
     };
 
     xhr.send(formData);
   });
+}
+
+/**
+ * Converts a base64 Data URL (e.g. from LocalStorage) to a Blob and uploads it to Cloudinary.
+ * Used to migrate local storage images directly to Cloudinary CDN.
+ */
+export async function uploadDataUrlToCloudinary(
+  dataUrl: string,
+  fileName = 'migrated_image.jpg',
+  onProgress?: (percent: number) => void,
+  overrideConfig?: { cloudName?: string; uploadPreset?: string }
+): Promise<CloudinaryUploadResponse> {
+  // Convert Data URL to Blob
+  const parts = dataUrl.split(',');
+  const mimeMatch = parts[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const bstr = atob(parts[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  const blob = new Blob([u8arr], { type: mime });
+  const file = new File([blob], fileName, { type: mime });
+
+  return uploadImageToCloudinary(file, onProgress, overrideConfig);
+}
+
+/**
+ * Tests Cloudinary connection with a tiny SVG data blob.
+ */
+export async function testCloudinaryConnection(
+  cloudName?: string,
+  uploadPreset?: string
+): Promise<{ success: boolean; url?: string; message: string }> {
+  try {
+    const testSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="#10B981"/></svg>`;
+    const blob = new Blob([testSvg], { type: 'image/svg+xml' });
+    const file = new File([blob], 'cloudinary_test_ping.svg', { type: 'image/svg+xml' });
+    const res = await uploadImageToCloudinary(file, undefined, { cloudName, uploadPreset });
+    return {
+      success: true,
+      url: res.secure_url,
+      message: `Connected successfully! Test asset uploaded to Cloudinary: ${res.public_id}`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || 'Connection test failed.',
+    };
+  }
 }
