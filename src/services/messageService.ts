@@ -1,5 +1,6 @@
 import { ContactMessage } from '../types';
-import { DB_PATHS, getDatabaseData, setDatabaseData, pushDatabaseData } from '../firebase/database';
+import { DB_PATHS, getDatabaseData, pushDatabaseData, setDatabaseData } from '../firebase/database';
+import { apiGet, apiPost, apiPatch, apiDelete } from './apiService';
 
 const LOCAL_MESSAGES_KEY = 'hissan_portfolio_messages';
 
@@ -49,6 +50,16 @@ export async function sendMessage(data: Omit<ContactMessage, 'id' | 'timestamp' 
     read: false,
   };
 
+  // Try server endpoint
+  try {
+    const res = await apiPost<{ success: boolean; message: ContactMessage }>('/api/messages', data);
+    if (res && res.message) {
+      newMsg.id = res.message.id;
+    }
+  } catch (err) {
+    console.warn('Server message post failed:', err);
+  }
+
   // Attempt write to Firebase Realtime Database
   try {
     const pushedKey = await pushDatabaseData(DB_PATHS.MESSAGES, newMsg);
@@ -59,7 +70,7 @@ export async function sendMessage(data: Omit<ContactMessage, 'id' | 'timestamp' 
     console.warn('Firebase message push failed, saving locally:', err);
   }
 
-  // Always update local cache so admin can immediately view it
+  // Always update local cache
   const current = getLocalMessages();
   saveLocalMessages([newMsg, ...current]);
 
@@ -67,20 +78,36 @@ export async function sendMessage(data: Omit<ContactMessage, 'id' | 'timestamp' 
 }
 
 export async function fetchMessages(): Promise<ContactMessage[]> {
+  // Try server endpoint first
+  try {
+    const serverMessages = await apiGet<ContactMessage[]>('/api/messages');
+    if (serverMessages && Array.isArray(serverMessages)) {
+      saveLocalMessages(serverMessages);
+      return serverMessages;
+    }
+  } catch (err) {
+    console.warn('Server messages fetch failed:', err);
+  }
+
   try {
     const remoteData = await getDatabaseData<Record<string, ContactMessage> | ContactMessage[]>(DB_PATHS.MESSAGES);
     if (remoteData) {
       if (Array.isArray(remoteData)) {
-        return remoteData.filter(Boolean).sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+        const sorted = remoteData.filter(Boolean).sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+        saveLocalMessages(sorted);
+        return sorted;
       }
-      return Object.entries(remoteData).map(([key, val]) => ({
+      const list = Object.entries(remoteData).map(([key, val]) => ({
         ...val,
         id: key,
       })).sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+      saveLocalMessages(list);
+      return list;
     }
-  } catch (error) {
-    console.warn('Could not fetch messages from Firebase, falling back to local storage:', error);
+  } catch (err) {
+    console.warn('Failed to fetch messages from Firebase, falling back to local storage:', err);
   }
+
   return getLocalMessages();
 }
 
@@ -90,10 +117,18 @@ export async function markMessageRead(id: string, read: boolean = true): Promise
   saveLocalMessages(updated);
 
   try {
-    // If Firebase is connected, update the specific record
-    await setDatabaseData(`${DB_PATHS.MESSAGES}/${id}/read`, read);
+    await apiPatch(`/api/messages/${id}`, { read });
   } catch (err) {
-    console.warn('Failed to update message read state in Firebase:', err);
+    console.warn('Server message mark read failed:', err);
+  }
+
+  try {
+    const target = updated.find((m) => m.id === id);
+    if (target) {
+      await setDatabaseData(`${DB_PATHS.MESSAGES}/${id}`, target);
+    }
+  } catch (err) {
+    console.warn('Firebase message mark read failed:', err);
   }
 }
 
@@ -103,8 +138,14 @@ export async function deleteMessageById(id: string): Promise<void> {
   saveLocalMessages(updated);
 
   try {
-    await setDatabaseData(`${DB_PATHS.MESSAGES}/${id}`, null);
+    await apiDelete(`/api/messages/${id}`);
   } catch (err) {
-    console.warn('Failed to delete message in Firebase:', err);
+    console.warn('Server message delete failed:', err);
+  }
+
+  try {
+    await setDatabaseData(DB_PATHS.MESSAGES, updated);
+  } catch (err) {
+    console.warn('Firebase delete message failed:', err);
   }
 }

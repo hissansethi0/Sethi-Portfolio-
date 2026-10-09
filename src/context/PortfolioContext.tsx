@@ -11,6 +11,7 @@ import {
 } from '../services/profileService';
 import { INITIAL_PROFILE, INITIAL_SETTINGS, INITIAL_PROJECTS, INITIAL_SKILLS, INITIAL_EXPERIENCE, INITIAL_EDUCATION } from '../data/initialData';
 import { subscribeToDatabasePath, DB_PATHS } from '../firebase/database';
+import { apiGet } from '../services/apiService';
 
 interface PortfolioContextType {
   profile: ProfileData;
@@ -63,7 +64,29 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const refreshAll = useCallback(async () => {
     try {
-      // Primary critical view data
+      // 1. First attempt full portfolio bundle from server for instant multi-device sync
+      const serverBundle = await apiGet<{
+        profile?: ProfileData;
+        projects?: Project[];
+        skills?: Skill[];
+        experience?: Experience[];
+        education?: Education[];
+        settings?: PortfolioSettings;
+        messages?: ContactMessage[];
+      }>('/api/portfolio');
+
+      if (serverBundle && serverBundle.profile) {
+        setProfile(serverBundle.profile);
+        if (serverBundle.projects && serverBundle.projects.length > 0) setProjects(serverBundle.projects);
+        if (serverBundle.skills && serverBundle.skills.length > 0) setSkills(serverBundle.skills);
+        if (serverBundle.experience) setExperience(serverBundle.experience);
+        if (serverBundle.education) setEducation(serverBundle.education);
+        if (serverBundle.settings) setSettings(serverBundle.settings);
+        if (serverBundle.messages) setMessages(serverBundle.messages);
+        return;
+      }
+
+      // 2. Fallback to individual service calls
       const [profData, projData, skillData] = await Promise.all([
         fetchProfile(),
         fetchProjects(),
@@ -74,7 +97,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (projData && projData.length > 0) setProjects(projData);
       if (skillData && skillData.length > 0) setSkills(skillData);
 
-      // Asynchronously fetch remaining secondary data without delaying main render
       Promise.all([
         fetchExperience(),
         fetchEducation(),
@@ -98,6 +120,21 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     refreshAll();
 
+    // Re-sync whenever user focuses the app or switches back to tab (e.g. on mobile after desktop edits)
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshAll();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    // Periodic lightweight sync every 25 seconds for multi-device live sync
+    const syncInterval = setInterval(() => {
+      refreshAll();
+    }, 25000);
+
     // Setup live Firebase RTDB listeners where available
     const unsubProfile = subscribeToDatabasePath<ProfileData>(DB_PATHS.PROFILE, (data) => {
       if (data) {
@@ -118,6 +155,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
 
     return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      clearInterval(syncInterval);
       unsubProfile();
       unsubProjects();
       unsubMessages();

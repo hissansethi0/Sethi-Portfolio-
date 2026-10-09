@@ -1200,9 +1200,12 @@ export const AdminDashboard: React.FC = () => {
                           <AlertTriangle className="w-3 h-3" /> Local Storage Base64
                         </span>
                       ) : null}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        <CheckCircle2 className="w-3 h-3" /> Multi-Device Sync Active
+                      </span>
                     </div>
                     <p className="text-xs text-slate-400 mt-1">
-                      Uploaded directly to Cloudinary CDN and synchronized across your Hero Section, About Me card, and CV / Resume modal.
+                      Uploaded directly to Cloudinary CDN and permanently synced to the server so all visitors, mobiles, and computers instantly see your updated picture.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

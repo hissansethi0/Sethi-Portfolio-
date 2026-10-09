@@ -12,7 +12,7 @@ export const INITIAL_PROFILE: ProfileData = {
   whatsapp: '+92 313 3492982',
   linkedin: 'https://pk.linkedin.com/in/hissan-sethi-7a3682415',
   github: 'https://github.com/hissansethi0',
-  avatarUrl: '/assets/hissan-portrait.jpg',
+  avatarUrl: 'https://res.cloudinary.com/dcaomiuls/image/upload/v1791564824/elpowimn3utpjfl2skdt.jpg',
   availableForWork: true,
 };
 
