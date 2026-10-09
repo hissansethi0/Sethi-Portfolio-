@@ -2,6 +2,23 @@
 <html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Gracefully ignore disabled Vite HMR WebSocket connection errors per environment constraints
+      window.addEventListener('unhandledrejection', function(e) {
+        var msg = (e.reason && (e.reason.message || e.reason.stack || '')) || '';
+        if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('@vite/client') !== -1) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      });
+      window.addEventListener('error', function(e) {
+        var msg = (e.message || '') + ' ' + (e.filename || '');
+        if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('@vite/client') !== -1) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      });
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="GORaUw9W2M7c0Oii7g7tdlHKO_2PdHjsm4_gdr4ZocI" />
     <meta name="google-site-verification" content="Ct5FplIaRm0ey2cTwa-dREE1MAIe7x36-67bLscuvRI" />

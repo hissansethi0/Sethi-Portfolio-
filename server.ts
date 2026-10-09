@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -84,6 +85,7 @@ let currentStore: PortfolioStore = loadStore();
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
+  const server = http.createServer(app);
 
   app.use(express.json({ limit: '25mb' }));
 
@@ -293,7 +295,12 @@ async function startServer() {
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        ws: {
+          server,
+        },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -305,7 +312,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`[Full-Stack Server] running on http://0.0.0.0:${PORT}`);
   });
 }
