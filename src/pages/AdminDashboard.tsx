@@ -1387,6 +1387,30 @@ export const AdminDashboard: React.FC = () => {
                     <button
                       type="button"
                       onClick={async () => {
+                        const updated = { ...profile, avatarUrl: 'https://res.cloudinary.com/dcaomiuls/image/upload/v1791565425/brafgs9gke3jlztjvwpm.jpg' };
+                        await updateProfile(updated);
+                        showNotification('Switched to Latest Cloudinary Portrait! Synced across all devices.');
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-3 transition cursor-pointer ${
+                        profile.avatarUrl?.includes('brafgs9gke3jlztjvwpm') 
+                          ? 'border-emerald-500 bg-emerald-500/10' 
+                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      }`}
+                    >
+                      <img 
+                        src="https://res.cloudinary.com/dcaomiuls/image/upload/v1791565425/brafgs9gke3jlztjvwpm.jpg" 
+                        alt="Latest Cloudinary portrait" 
+                        className="w-10 h-10 rounded-lg object-cover object-top border border-slate-700 shrink-0" 
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white truncate">Latest Portrait</p>
+                        <p className="text-[10px] text-emerald-400 font-mono">Cloudinary CDN</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
                         const updated = { ...profile, avatarUrl: 'https://res.cloudinary.com/dcaomiuls/image/upload/v1791564824/elpowimn3utpjfl2skdt.jpg' };
                         await updateProfile(updated);
                         showNotification('Switched to Studio Portrait (Cloudinary CDN)!');
