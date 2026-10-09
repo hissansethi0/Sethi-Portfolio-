@@ -693,12 +693,16 @@ LANGUAGES
               {/* Circular Avatar with Red Ring */}
               <div className="shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-full border-[4px] border-[#DE1B39] overflow-hidden bg-[#8b0000] shadow-[0_4px_20px_rgba(222,27,57,0.4)]">
                 <img 
+                  key={profile.avatarUrl || 'cv-avatar'}
                   src={profile.avatarUrl || '/assets/hissan-cv-avatar.jpg'} 
                   alt={profile.name || 'Hissan Sethi'} 
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover object-top"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';
+                    const target = e.target as HTMLImageElement;
+                    if (!target.src.includes('/assets/hissan-portrait.jpg')) {
+                      target.src = '/assets/hissan-portrait.jpg';
+                    }
                   }}
                 />
               </div>

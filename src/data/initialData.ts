@@ -20,7 +20,7 @@ export const INITIAL_SETTINGS: PortfolioSettings = {
   allowDirectMessages: true,
   displayFeaturedOnlyByDefault: false,
   cloudinaryCloudName: 'dcaomiuls',
-  cloudinaryUploadPreset: 'Sethi-Portfoilo',
+  cloudinaryUploadPreset: 'Sethi-Portfolio',
 };
 
 export const INITIAL_PROJECTS: Project[] = [

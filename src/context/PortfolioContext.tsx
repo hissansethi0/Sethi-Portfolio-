@@ -99,6 +99,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     refreshAll();
 
     // Setup live Firebase RTDB listeners where available
+    const unsubProfile = subscribeToDatabasePath<ProfileData>(DB_PATHS.PROFILE, (data) => {
+      if (data) {
+        setProfile((prev) => ({ ...prev, ...data }));
+      }
+    });
+
     const unsubProjects = subscribeToDatabasePath<Project[]>(DB_PATHS.PROJECTS, (data) => {
       if (data && Array.isArray(data)) setProjects(data.filter(Boolean));
     });
@@ -112,6 +118,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
 
     return () => {
+      unsubProfile();
       unsubProjects();
       unsubMessages();
     };

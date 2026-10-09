@@ -184,22 +184,21 @@ export const Hero: React.FC = () => {
 
               {/* 100% Original Portrait Presentation - No filters, no masking */}
               <div className="relative w-full aspect-[3/4] max-w-[340px] sm:max-w-[380px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-[#0d141e]">
-                <picture>
-                  {!profile.avatarUrl && (
-                    <source srcSet="/assets/hissan-portrait.webp" type="image/webp" />
-                  )}
-                  <img
-                    src={profile.avatarUrl || '/assets/hissan-portrait.jpg'}
-                    alt="Hissan Sethi - Full Stack Web Developer"
-                    referrerPolicy="no-referrer"
-                    decoding="async"
-                    loading="eager"
-                    className="w-full h-full object-cover object-top"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/assets/hissan-portrait.jpg';
-                    }}
-                  />
-                </picture>
+                <img
+                  key={profile.avatarUrl || 'default-avatar'}
+                  src={profile.avatarUrl || '/assets/hissan-portrait.jpg'}
+                  alt="Hissan Sethi - Full Stack Web Developer"
+                  referrerPolicy="no-referrer"
+                  decoding="async"
+                  loading="eager"
+                  className="w-full h-full object-cover object-top transition-opacity duration-300"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (!target.src.includes('/assets/hissan-portrait.jpg')) {
+                      target.src = '/assets/hissan-portrait.jpg';
+                    }
+                  }}
+                />
               </div>
 
               {/* Typography Banner beside/below portrait matching mockup */}

@@ -4,7 +4,7 @@
  *
  * PUBLIC CONFIGURATION:
  * Cloud Name: dcaomiuls
- * Upload Preset: Sethi-Portfoilo
+ * Upload Preset: Sethi-Portfolio
  *
  * (Note: The Cloudinary API Secret is strictly excluded from client-side code).
  */
@@ -24,9 +24,17 @@ export interface CloudinaryUploadResponse {
  */
 export function getCloudinaryConfig(): { cloudName: string; uploadPreset: string } {
   let cloudName = 'dcaomiuls';
-  let uploadPreset = 'Sethi-Portfoilo';
+  let uploadPreset = 'Sethi-Portfolio';
 
-  // 1. Check local storage user settings if previously customized
+  // 1. Vite environment variables if available
+  if (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) {
+    cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME.trim();
+  }
+  if (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET) {
+    uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET.trim();
+  }
+
+  // 2. Check local storage user settings if previously customized
   try {
     const raw = localStorage.getItem('hissan_portfolio_settings');
     if (raw) {
@@ -35,19 +43,18 @@ export function getCloudinaryConfig(): { cloudName: string; uploadPreset: string
         cloudName = parsed.cloudinaryCloudName.trim();
       }
       if (parsed.cloudinaryUploadPreset?.trim()) {
-        uploadPreset = parsed.cloudinaryUploadPreset.trim();
+        let val = parsed.cloudinaryUploadPreset.trim();
+        // Auto-heal common typo "Sethi-Portfoilo" -> "Sethi-Portfolio"
+        if (val.toLowerCase() === 'sethi-portfoilo') {
+          val = 'Sethi-Portfolio';
+          parsed.cloudinaryUploadPreset = val;
+          localStorage.setItem('hissan_portfolio_settings', JSON.stringify(parsed));
+        }
+        uploadPreset = val;
       }
     }
   } catch {
     // ignore
-  }
-
-  // 2. Vite environment variables if available
-  if (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) {
-    cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME.trim();
-  }
-  if (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET) {
-    uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET.trim();
   }
 
   return { cloudName, uploadPreset };

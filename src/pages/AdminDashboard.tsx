@@ -1375,6 +1375,86 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 </div>
 
+                {/* QUICK SELECT PRESETS (Including newly hosted portraits) */}
+                <div className="space-y-2 pt-2">
+                  <label className="text-xs font-mono text-slate-400 block font-semibold">
+                    Quick Preset Gallery (One-Click Selection):
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updated = { ...profile, avatarUrl: 'https://res.cloudinary.com/dcaomiuls/image/upload/v1791564824/elpowimn3utpjfl2skdt.jpg' };
+                        await updateProfile(updated);
+                        showNotification('Switched to Studio Portrait (Cloudinary CDN)!');
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-3 transition cursor-pointer ${
+                        profile.avatarUrl?.includes('elpowimn3utpjfl2skdt') 
+                          ? 'border-emerald-500 bg-emerald-500/10' 
+                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      }`}
+                    >
+                      <img 
+                        src="https://res.cloudinary.com/dcaomiuls/image/upload/v1791564824/elpowimn3utpjfl2skdt.jpg" 
+                        alt="Studio portrait" 
+                        className="w-10 h-10 rounded-lg object-cover object-top border border-slate-700 shrink-0" 
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white truncate">Studio Portrait</p>
+                        <p className="text-[10px] text-emerald-400 font-mono">Cloudinary CDN</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updated = { ...profile, avatarUrl: 'https://res.cloudinary.com/dcaomiuls/image/upload/v1791564829/rszwagwgvzl8ikfn2thz.jpg' };
+                        await updateProfile(updated);
+                        showNotification('Switched to Modern Sunglasses Portrait (Cloudinary CDN)!');
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-3 transition cursor-pointer ${
+                        profile.avatarUrl?.includes('rszwagwgvzl8ikfn2thz') 
+                          ? 'border-emerald-500 bg-emerald-500/10' 
+                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      }`}
+                    >
+                      <img 
+                        src="https://res.cloudinary.com/dcaomiuls/image/upload/v1791564829/rszwagwgvzl8ikfn2thz.jpg" 
+                        alt="Sunglasses portrait" 
+                        className="w-10 h-10 rounded-lg object-cover object-top border border-slate-700 shrink-0" 
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white truncate">Sunglasses Look</p>
+                        <p className="text-[10px] text-emerald-400 font-mono">Cloudinary CDN</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updated = { ...profile, avatarUrl: '/assets/hissan-portrait.jpg' };
+                        await updateProfile(updated);
+                        showNotification('Reset to Local Default Portrait!');
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-3 transition cursor-pointer ${
+                        profile.avatarUrl === '/assets/hissan-portrait.jpg' 
+                          ? 'border-emerald-500 bg-emerald-500/10' 
+                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      }`}
+                    >
+                      <img 
+                        src="/assets/hissan-portrait.jpg" 
+                        alt="Local default portrait" 
+                        className="w-10 h-10 rounded-lg object-cover object-top border border-slate-700 shrink-0" 
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white truncate">Local Original</p>
+                        <p className="text-[10px] text-slate-400 font-mono">Default Asset</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
                 {/* DIRECT URL INPUT */}
                 <div className="space-y-1.5 pt-2">
                   <label className="text-xs font-mono text-slate-400 block">Or Enter Direct Image URL (Cloudinary, Imgur, GitHub, etc.):</label>
@@ -1601,7 +1681,7 @@ export const AdminDashboard: React.FC = () => {
                         value={settings.cloudinaryUploadPreset}
                         onChange={(e) => updatePortfolioSettings({ ...settings, cloudinaryUploadPreset: e.target.value })}
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400 focus:border-emerald-500 focus:outline-none"
-                        placeholder="Sethi-Portfoilo"
+                        placeholder="Sethi-Portfolio"
                       />
                     </div>
                   </div>
