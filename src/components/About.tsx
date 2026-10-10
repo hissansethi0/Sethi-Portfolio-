@@ -47,6 +47,44 @@ export const About: React.FC = () => {
           {/* Main Story Column */}
           <div className="lg:col-span-7 space-y-6 text-[#B7C1D1] leading-relaxed text-base">
             
+            {/* About Hissan Sethi - Key Overview & Milestones */}
+            <div className="p-6 sm:p-8 rounded-2xl bg-[#0D141E] border border-white/[0.08] shadow-xl space-y-4">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                About Hissan Sethi
+              </h2>
+              <p className="text-[#B7C1D1] text-base leading-relaxed">
+                <b className="text-white font-semibold">Hissan Sethi</b> is a prominent Pakistani Full Stack Web Developer and software engineer based in Pakistan. He is known for building modern, scalable web applications using Laravel, React, Node.js, PHP and MySQL.
+              </p>
+
+              <div className="pt-3 border-t border-white/[0.06] space-y-2.5">
+                <p className="text-white text-sm">
+                  <b className="font-semibold text-white">Key Details &amp; Milestones</b>
+                </p>
+                <ul className="space-y-2 text-sm text-[#B7C1D1]">
+                  <li className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2D8CFF] inline-block shrink-0" />
+                    <span><b className="text-white font-medium">Real Name:</b> Hissan Sethi</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2D8CFF] inline-block shrink-0" />
+                    <span><b className="text-white font-medium">Profession:</b> Full Stack Web Developer</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2D8CFF] inline-block shrink-0" />
+                    <span><b className="text-white font-medium">Expertise:</b> React, Node.js, REST APIs, MySQL</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2D8CFF] inline-block shrink-0" />
+                    <span><b className="text-white font-medium">Portfolio:</b> <a href="https://hissansethi.netlify.app" target="_blank" rel="noopener noreferrer" className="text-[#2D8CFF] hover:underline font-mono">hissansethi.netlify.app</a></span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#2D8CFF] inline-block shrink-0" />
+                    <span><b className="text-white font-medium">Location:</b> Pakistan</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
             <div className="p-6 sm:p-8 rounded-2xl bg-[#0D141E] border border-white/[0.08] shadow-xl space-y-5">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <span>The Developer Journey</span>
